@@ -17,10 +17,12 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from shortener.views import ShortenURLView, RedirectURLView, AnalyticsView
+from shortener.views import QRCodeView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', ShortenURLView.as_view(), name='shorten_url'),
     path('<str:code>/', RedirectURLView.as_view(), name='redirect_url'),
     path('analytics/<str:code>/', AnalyticsView.as_view(), name='analytics'),
+    path('qrcode/<str:code>/', QRCodeView.as_view(), name='qrcode'),
 ]

@@ -51,6 +51,11 @@
             font-size: 14px;
             color: #b3b3b3;
         }
+        /* QR Code Styling */
+        #qrCode {
+            margin-top: 15px;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -68,9 +73,12 @@
     {% if short_url %}
     <div class="alert mt-4">
         <p>✅ Your short URL:</p>
-        <a href="{{ short_url }}" class="fw-bold text-white">{{ short_url }}</a>
-        <button class="btn btn-secondary mt-2" onclick="getAnalytics('{{ short_url }}')">Show Click Analytics</button>
-        <p id="analyticsResult" class="mt-2"></p>
+        <input type="text" id="shortUrl" class="form-control text-center mb-2" value="{{ short_url }}" readonly>
+        <button class="btn btn-secondary" onclick="copyToClipboard()">📋 Copy Link</button>
+        <button class="btn btn-secondary" onclick="generateQRCode('{{ short_url }}')">📷 Generate QR Code</button>
+        <div id="qrCode">
+            <img id="qrImage" class="mt-3" src="" alt="QR Code">
+        </div>
     </div>
     {% endif %}
 </div>
@@ -80,13 +88,18 @@
 </div>
 
 <script>
-    function getAnalytics(shortUrl) {
-        fetch(shortUrl.replace(window.location.origin, window.location.origin + "/analytics"))
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('analyticsResult').innerText = `Clicks: ${data.click_count}`;
-            })
-            .catch(error => console.error('Error fetching analytics:', error));
+    function copyToClipboard() {
+        let shortUrlInput = document.getElementById('shortUrl');
+        shortUrlInput.select();
+        document.execCommand('copy');
+        alert('✅ Link copied to clipboard!');
+    }
+
+    function generateQRCode(shortUrl) {
+        let qrImage = document.getElementById('qrImage');
+        let qrCodeDiv = document.getElementById('qrCode');
+        qrImage.src = shortUrl.replace(window.location.origin, window.location.origin + "/qrcode");
+        qrCodeDiv.style.display = "block";
     }
 </script>
 

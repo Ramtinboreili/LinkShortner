@@ -4,6 +4,9 @@ from django.utils.crypto import get_random_string
 from django.views import View
 from .models import ShortenedURL
 from django import forms
+import qrcode
+from django.http import HttpResponse
+from io import BytesIO
 
 # فرم برای ورودی لینک
 class URLShortenerForm(forms.Form):
@@ -37,3 +40,13 @@ class AnalyticsView(View):
         url_entry = get_object_or_404(ShortenedURL, short_code=code)
         return JsonResponse({'short_url': request.build_absolute_uri(f'/{code}'), 'click_count': url_entry.click_count})
 
+
+# View for generating QR Code
+class QRCodeView(View):
+    def get(self, request, code):
+        url_entry = get_object_or_404(ShortenedURL, short_code=code)
+        qr = qrcode.make(request.build_absolute_uri(f'/{code}'))
+        buffer = BytesIO()
+        qr.save(buffer, format="PNG")
+        buffer.seek(0)
+        return HttpResponse(buffer.getvalue(), content_type="image/png")
