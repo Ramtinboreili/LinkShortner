@@ -16,13 +16,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from shortener.views import ShortenURLView, RedirectURLView, AnalyticsView
-from shortener.views import QRCodeView
+from shortener.views import LoginView, logout_view, DashboardView, QRCodeSVGView
 
-urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('', ShortenURLView.as_view(), name='shorten_url'),
-    path('<str:code>/', RedirectURLView.as_view(), name='redirect_url'),
-    path('analytics/<str:code>/', AnalyticsView.as_view(), name='analytics'),
-    path('qrcode/<str:code>/', QRCodeView.as_view(), name='qrcode'),
+urlpatterns += [
+    path('login/', LoginView.as_view(), name='login'),
+    path('logout/', logout_view, name='logout'),
+    path('dashboard/', DashboardView.as_view(), name='dashboard'),
+    path('qrcode-svg/<str:code>/', QRCodeSVGView.as_view(), name='qrcode_svg'),
 ]

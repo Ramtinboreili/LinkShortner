@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Links</title>
+</head>
+<body>
+    <h2>Your Shortened Links</h2>
+    <table border="1">
+        <tr>
+            <th>Original URL</th>
+            <th>Short URL</th>
+            <th>Clicks</th>
+            <th>QR Code</th>
+        </tr>
+        {% for link in links %}
+        <tr>
+            <td>{{ link.original_url }}</td>
+            <td><a href="/{{ link.short_code }}" target="_blank">{{ link.short_code }}</a></td>
+            <td>{{ link.click_count }}</td>
+            <td><a href="{% url 'qrcode_svg' link.short_code %}" target="_blank">QR Code</a></td>
+        </tr>
+        {% endfor %}
+    </table>
+    <br>
+    <a href="{% url 'logout' %}">Logout</a>
+</body>
+</html>
