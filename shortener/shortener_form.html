@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
+    <title>Shorten Your Link</title>
     <style>
         body {
             background-color: #1a1a1a;
@@ -12,7 +12,7 @@
             text-align: center;
         }
         .container {
-            width: 30%;
+            width: 50%;
             margin: 10% auto;
             padding: 20px;
             background: #2c2c2c;
@@ -22,7 +22,7 @@
         h1 {
             color: white;
         }
-        input[type="text"], input[type="password"], button {
+        input[type="text"], button {
             width: 80%;
             padding: 10px;
             margin: 10px 0;
@@ -30,7 +30,7 @@
             border: none;
             font-size: 16px;
         }
-        input {
+        input[type="text"] {
             background: #3a3a3a;
             color: white;
         }
@@ -38,38 +38,42 @@
             background: #ffffff;
             color: #1a1a1a;
             cursor: pointer;
-            font-weight: bold;
         }
         button:hover {
             background: #aaaaaa;
+        }
+        .short-link {
+            margin-top: 20px;
+            padding: 10px;
+            background: #4a4a4a;
+            border-radius: 5px;
+            word-break: break-all;
         }
         .footer {
             margin-top: 20px;
             font-size: 12px;
             color: #888;
         }
-        .error {
-            color: red;
-            font-size: 14px;
-        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Login</h1>
-        {% if error %}
-            <p class="error">{{ error }}</p>
-        {% endif %}
+        <h1>Shorten Your Link</h1>
         <form method="POST">
             {% csrf_token %}
-            <input type="text" name="username" placeholder="Username" required><br>
-            <input type="password" name="password" placeholder="Password" required><br>
-            <button type="submit">Login</button>
+            <input type="text" name="url" placeholder="Enter URL here" required>
+            <button type="submit">Shorten</button>
         </form>
+
+        {% if short_url %}
+            <div class="short-link">
+                Shortened Link: <a href="{{ short_url }}" target="_blank" style="color: #fff;">{{ short_url }}</a>
+            </div>
+        {% endif %}
+        
         <div class="footer">
             Developed by 360 Develop Team
         </div>
     </div>
 </body>
 </html>
-

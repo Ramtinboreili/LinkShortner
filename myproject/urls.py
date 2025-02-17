@@ -12,15 +12,21 @@ Class-based views
     2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
 Including another URLconf
     1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
+    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))"""
+
+
 from django.contrib import admin
 from django.urls import path
-from shortener.views import LoginView, logout_view, DashboardView, QRCodeSVGView
-
-urlpatterns += [
-    path('login/', LoginView.as_view(), name='login'),
-    path('logout/', logout_view, name='logout'),
-    path('dashboard/', DashboardView.as_view(), name='dashboard'),
-    path('qrcode-svg/<str:code>/', QRCodeSVGView.as_view(), name='qrcode_svg'),
+from shortener.views import LoginView, logout_view, DashboardView, QRCodeSVGView, ShortenURLView, RedirectURLView
+from shortener.views import login_view, logout_view, dashboard
+    
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path("login/", login_view, name="login"),
+    path("logout/", logout_view, name="logout"),
+    path("dashboard/", dashboard, name="dashboard"),
+    path("qrcode-svg/<str:code>/", QRCodeSVGView.as_view(), name="qrcode_svg"),
+    path('', ShortenURLView.as_view(), name='shorten_url'),
+    path('<str:code>/', RedirectURLView.as_view(), name='redirect_url'),  # این مسیر باید آخر قرار بگیرد
 ]
+

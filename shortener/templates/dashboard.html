@@ -1,27 +1,124 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>My Links</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #1a1a1a, #2c2c2c);
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 50px;
+        }
+        .container {
+            width: 80%;
+            margin: auto;
+            padding: 30px;
+            background: #2c2c2c;
+            border-radius: 15px;
+            box-shadow: 0px 4px 15px rgba(255, 255, 255, 0.2);
+        }
+        h1 {
+            color: white;
+        }
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 12px;
+            border: 1px solid #4a4a4a;
+            text-align: center;
+        }
+        th {
+            background: #3a3a3a;
+        }
+        td {
+            background: #4a4a4a;
+        }
+        .btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s ease;
+        }
+        .copy-btn {
+            background: white;
+            color: black;
+        }
+        .copy-btn:hover {
+            background: #aaaaaa;
+        }
+        .download-btn {
+            background: #28a745;
+            color: white;
+        }
+        .download-btn:hover {
+            background: #1e7e34;
+        }
+        .footer {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #888;
+        }
+    </style>
+    <script>
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert("Copied to clipboard: " + text);
+            }).catch(err => {
+                alert("Failed to copy: " + err);
+            });
+        }
+    </script>
 </head>
 <body>
-    <h2>Your Shortened Links</h2>
-    <table border="1">
-        <tr>
-            <th>Original URL</th>
-            <th>Short URL</th>
-            <th>Clicks</th>
-            <th>QR Code</th>
-        </tr>
-        {% for link in links %}
-        <tr>
-            <td>{{ link.original_url }}</td>
-            <td><a href="/{{ link.short_code }}" target="_blank">{{ link.short_code }}</a></td>
-            <td>{{ link.click_count }}</td>
-            <td><a href="{% url 'qrcode_svg' link.short_code %}" target="_blank">QR Code</a></td>
-        </tr>
-        {% endfor %}
-    </table>
-    <br>
-    <a href="{% url 'logout' %}">Logout</a>
+    <div class="container">
+        <h1>Your Dashboard</h1>
+
+        <a class="btn" style="background:white; color:black;" href="{% url 'shorten_url' %}">Shorten a New Link</a>
+
+        {% if links %}
+            <table>
+                <tr>
+                    <th>Original URL</th>
+                    <th>Shortened URL</th>
+                    <th>Clicks</th>
+                    <th>Copy</th>
+                    <th>Download QR</th>
+                </tr>
+                {% for link in links %}
+                    <tr>
+                        <td><a href="{{ link.original_url }}" target="_blank">{{ link.original_url }}</a></td>
+                        <td><a href="{{ request.build_absolute_uri }}/{{ link.short_code }}" target="_blank">
+                            {{ request.build_absolute_uri }}/{{ link.short_code }}
+                        </a></td>
+                        <td>{{ link.click_count }}</td>
+                        <td>
+                            <button class="btn copy-btn" onclick="copyToClipboard('{{ request.build_absolute_uri }}/{{ link.short_code }}')">Copy</button>
+                        </td>
+                        <td>
+                            <a class="btn download-btn" href="{% url 'qrcode_svg' code=link.short_code %}" download>QR Code</a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </table>
+        {% else %}
+            <p>No shortened links found.</p>
+        {% endif %}
+        
+        <a class="btn" style="background:red; color:white;" href="{% url 'logout' %}">Logout</a>
+
+        <div class="footer">
+            Developed by 360 Develop Team
+        </div>
+    </div>
 </body>
 </html>
+

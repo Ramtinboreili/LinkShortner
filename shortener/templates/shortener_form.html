@@ -1,45 +1,115 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Shorten URL</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shorten Your Link</title>
+    <style>
+        body {
+            background: linear-gradient(135deg, #1a1a1a, #2c2c2c);
+            color: white;
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            width: 40%;
+            padding: 30px;
+            background: #2c2c2c;
+            border-radius: 15px;
+            box-shadow: 0px 4px 15px rgba(255, 255, 255, 0.2);
+            text-align: center;
+        }
+        h1 {
+            color: white;
+            font-size: 28px;
+        }
+        input[type="text"], button {
+            width: 90%;
+            padding: 12px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border: none;
+            font-size: 16px;
+            outline: none;
+        }
+        input[type="text"] {
+            background: #3a3a3a;
+            color: white;
+            text-align: center;
+        }
+        button {
+            background: white;
+            color: #1a1a1a;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s ease;
+        }
+        button:hover {
+            background: #aaaaaa;
+            transform: scale(1.05);
+        }
+        .short-link {
+            margin-top: 20px;
+            padding: 15px;
+            background: #4a4a4a;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        a {
+            color: white;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .footer {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #888;
+        }
+        .dashboard-btn {
+            margin-top: 20px;
+            display: inline-block;
+            padding: 10px 20px;
+            background: white;
+            color: black;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: 0.3s ease;
+        }
+        .dashboard-btn:hover {
+            background: #aaaaaa;
+            transform: scale(1.05);
+        }
+    </style>
 </head>
 <body>
-    <h2>Shorten Your URL</h2>
-    <form method="POST">
-        {% csrf_token %}
-        <label>Enter URL:</label>
-        <input type="url" name="url" required>
-        <button type="submit">Shorten</button>
-    </form>
+    <div class="container">
+        <h1>Shorten Your Link</h1>
+        <form method="POST">
+            {% csrf_token %}
+            <input type="text" name="url" placeholder="Enter your URL here..." required>
+            <button type="submit">Shorten</button>
+        </form>
 
-    {% if short_url %}
-    <h3>Your Short URL:</h3>
-    <input type="text" id="shortUrl" value="{{ short_url }}" readonly>
-    <button onclick="copyToClipboard()">📋 Copy</button>
-    <button onclick="generateQRCode('{{ short_url }}')">📷 Generate QR Code</button>
-    
-    <div id="qrCode">
-        <img id="qrImage" src="" alt="QR Code">
+        {% if short_url %}
+            <div class="short-link">
+                Shortened Link: <a href="{{ short_url }}" target="_blank">{{ short_url }}</a>
+            </div>
+        {% endif %}
+
+        <a class="dashboard-btn" href="{% url 'dashboard' %}">Go to Dashboard</a>
+
+        <div class="footer">
+            Developed by 360 Develop Team
+        </div>
     </div>
-    {% endif %}
-
-    <br>
-    <a href="{% url 'dashboard' %}">Go to Dashboard</a>
 </body>
-
-<script>
-    function copyToClipboard() {
-        let shortUrlInput = document.getElementById('shortUrl');
-        shortUrlInput.select();
-        document.execCommand('copy');
-        alert('✅ Link copied to clipboard!');
-    }
-
-    function generateQRCode(shortUrl) {
-        let qrImage = document.getElementById('qrImage');
-        let qrCodeDiv = document.getElementById('qrCode');
-        qrImage.src = shortUrl.replace(window.location.origin, window.location.origin + "/qrcode-svg");
-        qrCodeDiv.style.display = "block";
-    }
-</script>
 </html>
+
