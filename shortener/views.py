@@ -19,6 +19,24 @@ from io import BytesIO
 from django.http import HttpResponse
 from django.views import View
 from .models import ShortenedURL
+from django.shortcuts import render, redirect
+from django.contrib import messages
+from .models import ShortenedURL
+
+class ShortenURLView(View):
+    def post(self, request):
+        url = request.POST.get("url")
+        if not url:
+            messages.error(request, "Please enter a valid URL.")
+            return redirect("shorten_url")
+
+        # چک کن که آیا URL قبلاً برای همان کاربر ساخته شده است یا نه
+        shortened, created = ShortenedURL.objects.get_or_create(original_url=url, defaults={"user": request.user})
+
+        if not created:
+            messages.info(request, "This URL is already shortened.")
+        
+        return render(request, "shortener_form.html", {"short_url": request.build_absolute_uri(shortened.short_code)})
 
 class QRCodeSVGView(View):
     def get(self, request, code):
