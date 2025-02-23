@@ -1,4 +1,4 @@
-# 🚀 Shortify - Django URL Shortener
+# 🚀 LinkShortner 
 
 Shortify is a **powerful and modern URL shortener** built with Django.  
 It allows users to **shorten URLs, track analytics, and manage links** through a beautiful and responsive dashboard.
