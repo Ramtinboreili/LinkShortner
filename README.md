@@ -21,7 +21,7 @@ It allows users to **shorten URLs, track analytics, and manage links** through a
 ## 📉 Installation & Setup
 ### 🔹 1. Clone the Repository
 ```sh
-git clone https://github.com/YOUR_GITHUB_USERNAME/Shortify.git
+git clone https://github.com/Ramtinboreili/LinkShortner.git
 cd Shortify
 ```
 
