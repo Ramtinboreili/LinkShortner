@@ -68,7 +68,7 @@ class Migration(migrations.Migration):
         migrations.AddIndex(
             model_name="shortenedurl",
             index=models.Index(
-                fields=["user", "-created_at"], name="shortener_s_user_id_9e6d1f_idx"
+                fields=["user", "-created_at"], name="shortener_user_created_idx"
             ),
         ),
     ]

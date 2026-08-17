@@ -29,7 +29,9 @@ class ShortenedURL(models.Model):
 
     class Meta:
         ordering = ("-created_at",)
-        indexes = [models.Index(fields=("user", "-created_at"))]
+        indexes = [
+            models.Index(fields=("user", "-created_at"), name="shortener_user_created_idx")
+        ]
 
     def __str__(self) -> str:
         return f"{self.short_code} -> {self.original_url}"
