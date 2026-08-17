@@ -1,91 +1,131 @@
-# 🚀 LinkShortner 
+# 🔗 LinkShortner
 
-Shortify is a **powerful and modern URL shortener** built with Django.  
-It allows users to **shorten URLs, track analytics, and manage links** through a beautiful and responsive dashboard.
-
-![Shortify Dashboard](https://your-image-url.com/preview.png)
-
----
-
-## 📉 Features
-✅ **Shorten URLs with ease**  
-✅ **User authentication for managing personal links**  
-✅ **Track the number of clicks for each short URL**  
-✅ **Copy the shortened URL with a single click**  
-✅ **Download QR Codes in SVG format**  
-✅ **Modern and responsive dark UI**  
-✅ **Admin panel for managing all users and links**  
+A production-ready URL shortener built with Django 5.2, PostgreSQL and Gunicorn.
+Shorten links, pick custom aliases, share QR codes, and track clicks from a
+dashboard — the whole stack runs from a single `docker compose up`.
 
 ---
 
-## 📉 Installation & Setup
-### 🔹 1. Clone the Repository
+## Features
+
+- **Short links** with random collision-safe codes or your own custom alias
+- **QR codes** for every link, previewable in-page and downloadable as SVG
+- **Click tracking** with atomic counters that survive concurrent traffic
+- **Dashboard** with search, pagination, per-link stats and deletion
+- **Accounts** — registration, login, and strict per-user link isolation
+- **Modern UI** — responsive, accessible, light/dark theme, zero external assets
+- **Admin panel** for managing every user and link
+
+---
+
+## Quick start (Docker)
+
 ```sh
 git clone https://github.com/Ramtinboreili/LinkShortner.git
-cd Shortify
+cd LinkShortner
+
+cp .env.example .env
+# Set SECRET_KEY and POSTGRES_PASSWORD at minimum:
+python3 -c "import secrets; print(secrets.token_urlsafe(50))"
+
+docker compose up -d --build
 ```
 
-### 🔹 2. Create a Virtual Environment & Install Dependencies
+The app is at <http://localhost:8000>. Migrations run automatically on boot.
+
+Create an admin account:
+
 ```sh
-python3 -m venv venv
-source venv/bin/activate  # Linux & Mac
-venv\Scripts\activate  # Windows
+docker compose exec web python manage.py createsuperuser
+```
+
+Or set `DJANGO_SUPERUSER_USERNAME` / `DJANGO_SUPERUSER_EMAIL` /
+`DJANGO_SUPERUSER_PASSWORD` in `.env` and it is created on first start.
+
+Useful commands:
+
+```sh
+docker compose logs -f web     # follow logs
+docker compose exec web python manage.py test   # run the test suite
+docker compose down            # stop (add -v to also drop the database volume)
+```
+
+---
+
+## Local development (without Docker)
+
+```sh
+python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-```
 
-### 🔹 3. Run Database Migrations
-```sh
+cp .env.example .env        # set DEBUG=True; SQLite is used when DATABASE_URL is unset
 python manage.py migrate
+python manage.py runserver
 ```
 
-### 🔹 4. Create a Superuser (Optional)
-```sh
-python manage.py createsuperuser
-```
-Fill in the required details to create an **admin account**.
+Run the tests with `python manage.py test`.
 
 ---
 
-## 📉 Running the Project
-To start the development server, run:
-```sh
-python manage.py runserver 0.0.0.0:8000
+## Configuration
+
+Everything is read from the environment — see [`.env.example`](.env.example).
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `SECRET_KEY` | — | **Required** when `DEBUG=False` |
+| `DEBUG` | `False` | Never enable in production |
+| `ALLOWED_HOSTS` | empty | Comma-separated hostnames |
+| `CSRF_TRUSTED_ORIGINS` | empty | Origins allowed to POST (needed behind HTTPS) |
+| `DATABASE_URL` | SQLite file | e.g. `postgres://user:pass@db:5432/linkshortner` |
+| `SITE_NAME` | `LinkShortner` | Branding shown in the UI |
+| `SHORT_CODE_LENGTH` | `7` | Length of generated codes |
+| `ALLOW_REGISTRATION` | `True` | Set `False` for a private instance |
+| `SECURE_SSL_REDIRECT` | `False` | Enable once TLS terminates in front |
+| `SECURE_HSTS_SECONDS` | `0` | e.g. `31536000` once HTTPS is stable |
+| `LOG_LEVEL` | `INFO` | Root log level |
+
+### Running behind a reverse proxy
+
+The app trusts `X-Forwarded-Proto` for scheme detection. Terminate TLS at your
+proxy, forward to `web:8000`, then set `SECURE_SSL_REDIRECT=True`,
+`SECURE_HSTS_SECONDS=31536000`, and add your domain to both `ALLOWED_HOSTS`
+and `CSRF_TRUSTED_ORIGINS`. Static files are served by WhiteNoise, so no
+separate static-file container is needed.
+
+---
+
+## Project layout
+
 ```
-Open your browser and visit:
+config/                 Django project — settings, URLs, WSGI/ASGI entrypoints
+shortener/
+  models.py             ShortenedURL
+  views.py              home, dashboard, redirect, QR, auth
+  forms.py              shorten + auth forms
+  urls.py               routes, incl. the root-level short-code catch-all
+  utils.py              code generation, alias validation, reserved names
+  templates/shortener/  base layout + pages
+  static/shortener/     stylesheet and progressive-enhancement JS
+  tests/                model and view tests
+docker/entrypoint.sh    waits for the DB, migrates, then starts Gunicorn
+Dockerfile              multi-stage build, non-root runtime
+docker-compose.yml      web + postgres
 ```
-http://127.0.0.1:8000/
-```
 
 ---
 
-## 📉 Project Routes
-| **Route**             | **Description** |
-|----------------------|----------------|
-| `/`                  | Shorten a URL |
-| `/dashboard/`        | User's link management dashboard |
-| `/login/`            | User login page |
-| `/logout/`           | Logout and end session |
-| `/<short_code>/`     | Redirects to original URL |
-| `/qrcode-svg/<short_code>/` | Download QR code as SVG |
+## Security notes
+
+- Only `http`/`https` destinations are accepted, so a short link can never
+  redirect into a `javascript:` or `file:` URL.
+- Reserved codes (`admin`, `login`, `dashboard`, …) cannot be claimed as aliases.
+- Links are scoped to their owner: another user cannot list or delete them.
+- Secure cookies, HSTS, `nosniff` and `X-Frame-Options: DENY` are enabled
+  automatically whenever `DEBUG=False`.
 
 ---
 
-## 📉 Technologies Used
-🔹 **Django 5** - Backend Framework  
-🔹 **SQLite** - Database  
-🔹 **HTML, CSS, JavaScript** - Frontend  
-🔹 **Bootstrap** - Responsive UI  
-🔹 **Gunicorn** - Production server  
+## License
 
----
-
-## 📉 Developed By
-🚀 **360 Develop Team**  
-📧 **Email:** info@360developteam.com  
-🌐 **Website:** [360developteam.com](https://360developteam.com)  
-
----
-
-### 🎉 **Enjoy using Shortify and contribute to its development!** 🚀🔥
-
- 
+MIT

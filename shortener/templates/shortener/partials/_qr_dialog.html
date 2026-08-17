@@ -1,0 +1,10 @@
+{# Shared QR preview dialog, driven by [data-qr] buttons. #}
+<dialog class="qr-dialog" id="qr-dialog">
+  <h2>QR code</h2>
+  <img data-qr-image src="" alt="QR code for the short link">
+  <span class="qr-code-label" data-qr-label></span>
+  <div class="qr-dialog-actions">
+    <a class="btn btn-primary btn-sm" data-qr-download href="#" download>Download SVG</a>
+    <button class="btn btn-secondary btn-sm" type="button" data-qr-close>Close</button>
+  </div>
+</dialog>

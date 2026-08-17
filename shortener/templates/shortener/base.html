@@ -1,0 +1,74 @@
+{% load static %}<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ SITE_NAME }}{% endblock %}</title>
+  <meta name="description" content="{{ SITE_NAME }} — shorten links, share QR codes, and track clicks.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔗</text></svg>">
+  <link rel="stylesheet" href="{% static 'shortener/css/app.css' %}">
+  <script>
+    // Applied before first paint so the chosen theme never flashes.
+    (function () {
+      var t = localStorage.getItem('theme');
+      if (t) document.documentElement.dataset.theme = t;
+    })();
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="{% url 'home' %}">
+        <span class="brand-mark" aria-hidden="true">🔗</span>
+        <span>{{ SITE_NAME }}</span>
+      </a>
+
+      <nav class="nav" aria-label="Main">
+        {% if user.is_authenticated %}
+          <a class="nav-link{% if request.resolver_match.url_name == 'home' %} is-active{% endif %}" href="{% url 'home' %}">Shorten</a>
+          <a class="nav-link{% if request.resolver_match.url_name == 'dashboard' %} is-active{% endif %}" href="{% url 'dashboard' %}">Dashboard</a>
+          <form class="inline-form" method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button class="btn btn-ghost" type="submit">Log out</button>
+          </form>
+        {% else %}
+          <a class="nav-link" href="{% url 'login' %}">Log in</a>
+          {% if ALLOW_REGISTRATION %}
+            <a class="btn btn-primary btn-sm" href="{% url 'register' %}">Sign up</a>
+          {% endif %}
+        {% endif %}
+        <button class="theme-toggle" type="button" data-theme-toggle aria-label="Toggle colour theme">
+          <span class="theme-icon-dark" aria-hidden="true">🌙</span>
+          <span class="theme-icon-light" aria-hidden="true">☀️</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main" class="container">
+    {% if messages %}
+      <ul class="messages" role="status">
+        {% for message in messages %}
+          <li class="message message-{{ message.tags|default:'info' }}">{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <span>{{ SITE_NAME }}</span>
+      <span aria-hidden="true">·</span>
+      <a href="https://github.com/Ramtinboreili/LinkShortner" rel="noopener">Source</a>
+    </div>
+  </footer>
+
+  <div class="toast" data-toast role="status" aria-live="polite" hidden></div>
+  <script src="{% static 'shortener/js/app.js' %}" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

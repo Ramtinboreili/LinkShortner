@@ -1,0 +1,33 @@
+{% extends "shortener/base.html" %}
+
+{% block title %}Sign up — {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+<section class="auth-shell">
+  <div class="hero">
+    <h1>Create an account</h1>
+    <p>It takes a username and a password — nothing else.</p>
+  </div>
+
+  <div class="card">
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <ul class="errorlist">
+          {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+        </ul>
+      {% endif %}
+
+      {% for field in form %}
+        {% include "shortener/partials/_field.html" with field=field %}
+      {% endfor %}
+
+      <button class="btn btn-primary btn-block" type="submit">Sign up</button>
+    </form>
+
+    <p class="help" style="text-align:center;margin-top:1rem">
+      Already registered? <a href="{% url 'login' %}">Log in</a>.
+    </p>
+  </div>
+</section>
+{% endblock %}

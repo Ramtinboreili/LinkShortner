@@ -1,173 +1,178 @@
-from django.shortcuts import render, get_object_or_404, redirect
-from django.http import HttpResponse
-from django.views import View
-from django.contrib.auth import login, logout, authenticate
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import AuthenticationForm
-from django.utils.crypto import get_random_string
-from django import forms
+import logging
 from io import BytesIO
-from .models import ShortenedURL
-from django.utils.decorators import method_decorator
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required
-from .models import ShortenedURL
+
 import qrcode
 import qrcode.image.svg
-from io import BytesIO
-from django.http import HttpResponse
-from django.views import View
-from .models import ShortenedURL
-from django.shortcuts import render, redirect
+from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth import login
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.views import redirect_to_login
+from django.db import DatabaseError, models
+from django.db.models import F, Sum
+from django.http import Http404, HttpResponse, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse_lazy
+from django.utils import timezone
+from django.views import View
+from django.views.generic import CreateView, ListView
+
+from .forms import RegisterForm, ShortenURLForm
 from .models import ShortenedURL
+from .utils import RESERVED_CODES
 
-class ShortenURLView(View):
+logger = logging.getLogger(__name__)
+
+
+class HomeView(View):
+    """Landing page with the shorten form.
+
+    Anonymous visitors can see the page but are sent to the login screen when
+    they submit, so the link always has an owner.
+    """
+
+    template_name = "shortener/home.html"
+
+    def get(self, request):
+        return render(request, self.template_name, {"form": ShortenURLForm()})
+
     def post(self, request):
-        url = request.POST.get("url")
-        if not url:
-            messages.error(request, "Please enter a valid URL.")
-            return redirect("shorten_url")
+        if not request.user.is_authenticated:
+            return redirect_to_login(request.get_full_path(), settings.LOGIN_URL)
 
-        # چک کن که آیا URL قبلاً برای همان کاربر ساخته شده است یا نه
-        shortened, created = ShortenedURL.objects.get_or_create(original_url=url, defaults={"user": request.user})
+        form = ShortenURLForm(request.POST)
+        if not form.is_valid():
+            return render(request, self.template_name, {"form": form}, status=400)
 
-        if not created:
-            messages.info(request, "This URL is already shortened.")
-        
-        return render(request, "shortener_form.html", {"short_url": request.build_absolute_uri(shortened.short_code)})
+        url = form.cleaned_data["original_url"]
+        custom_code = form.cleaned_data["short_code"]
 
-class QRCodeSVGView(View):
+        link = None
+        if not custom_code:
+            # Re-use the existing link instead of handing out a second code for
+            # the same destination. A custom alias is an explicit request for a
+            # new one, so it always creates a fresh link.
+            link = ShortenedURL.objects.filter(
+                user=request.user, original_url=url
+            ).first()
+            if link:
+                messages.info(request, "You already had a short link for this URL.")
+
+        if link is None:
+            link = ShortenedURL.objects.create(
+                user=request.user, original_url=url, short_code=custom_code
+            )
+            messages.success(request, "Short link created.")
+
+        return render(
+            request,
+            self.template_name,
+            {"form": ShortenURLForm(), "link": link, "short_url": link.build_short_url(request)},
+        )
+
+
+class DashboardView(LoginRequiredMixin, ListView):
+    """Paginated list of the current user's links."""
+
+    template_name = "shortener/dashboard.html"
+    context_object_name = "links"
+    paginate_by = 20
+
+    def get_queryset(self):
+        queryset = ShortenedURL.objects.filter(user=self.request.user)
+        query = self.request.GET.get("q", "").strip()
+        if query:
+            queryset = queryset.filter(
+                models.Q(original_url__icontains=query)
+                | models.Q(short_code__icontains=query)
+            )
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        totals = ShortenedURL.objects.filter(user=self.request.user).aggregate(
+            total_links=models.Count("id"), total_clicks=Sum("click_count")
+        )
+        context["query"] = self.request.GET.get("q", "")
+        context["total_links"] = totals["total_links"] or 0
+        context["total_clicks"] = totals["total_clicks"] or 0
+        return context
+
+
+class DeleteLinkView(LoginRequiredMixin, View):
+    """Delete one of the current user's links."""
+
+    def post(self, request, pk):
+        link = get_object_or_404(ShortenedURL, pk=pk, user=request.user)
+        link.delete()
+        messages.success(request, f"Deleted /{link.short_code}.")
+        return redirect("dashboard")
+
+
+class RedirectURLView(View):
+    """Resolve a short code and send the visitor to the destination."""
+
     def get(self, request, code):
         try:
             link = ShortenedURL.objects.get(short_code=code)
-            qr = qrcode.make(link.original_url, image_factory=qrcode.image.svg.SvgImage)
-            stream = BytesIO()
-            qr.save(stream)
-            response = HttpResponse(stream.getvalue(), content_type="image/svg+xml")
-            response["Content-Disposition"] = f'attachment; filename="{code}.svg"'
-            return response
         except ShortenedURL.DoesNotExist:
-            return HttpResponse("Invalid Link", status=404)
+            # `/dashboard` and friends land here because the catch-all matches
+            # before APPEND_SLASH gets a chance; send them to the real page.
+            if code.lower() in RESERVED_CODES:
+                return redirect(f"/{code}/", permanent=True)
+            raise Http404("Unknown short link.")
+
+        # Update in the database rather than on the instance so that concurrent
+        # hits on the same link cannot overwrite each other's counts.
+        try:
+            ShortenedURL.objects.filter(pk=link.pk).update(
+                click_count=F("click_count") + 1, last_clicked_at=timezone.now()
+            )
+        except DatabaseError:  # a failed count must never break the redirect
+            logger.exception("Failed to record click for %s", code)
+        return redirect(link.original_url)
 
 
-def QRCodeSVGView(request, code):
-    try:
-        link = ShortenedURL.objects.get(short_code=code)
-        qr = qrcode.make(link.original_url, image_factory=qrcode.image.svg.SvgImage)
+class QRCodeView(View):
+    """Return the short link's QR code as SVG (inline, or as a download)."""
+
+    def get(self, request, code):
+        link = get_object_or_404(ShortenedURL, short_code=code)
+        image = qrcode.make(
+            link.build_short_url(request),
+            image_factory=qrcode.image.svg.SvgPathImage,
+            box_size=12,
+            border=2,
+        )
         stream = BytesIO()
-        qr.save(stream)
+        image.save(stream)
+
         response = HttpResponse(stream.getvalue(), content_type="image/svg+xml")
-        response["Content-Disposition"] = f'attachment; filename="{code}.svg"'
+        if "download" in request.GET:
+            response["Content-Disposition"] = f'attachment; filename="{code}.svg"'
+        response["Cache-Control"] = "public, max-age=86400"
         return response
-    except ShortenedURL.DoesNotExist:
-        return HttpResponse("Invalid Link", status=404)
-
-# **🔹 فرم ورود کاربران**
-class LoginForm(forms.Form):
-    username = forms.CharField(max_length=150)
-    password = forms.CharField(widget=forms.PasswordInput)
 
 
-# **🔹 صفحه ورود کاربران**
-class LoginView(View):
-    def get(self, request):
-        form = LoginForm()
-        return render(request, 'login.html', {'form': form})
+class RegisterView(CreateView):
+    form_class = RegisterForm
+    template_name = "shortener/register.html"
+    success_url = reverse_lazy("dashboard")
 
-    def post(self, request):
-        form = LoginForm(request.POST)
-        if form.is_valid():
-            username = form.cleaned_data['username']
-            password = form.cleaned_data['password']
-            user = authenticate(request, username=username, password=password)
-            if user:
-                login(request, user)
-                return redirect('dashboard')
-        return render(request, 'login.html', {'form': form, 'error': 'Invalid credentials'})
-
-
-# **🔹 خروج از حساب کاربری**
-@login_required
-def logout_view(request):
-    logout(request)
-    return redirect('login')
-
-
-# **🔹 فرم کوتاه کردن لینک**
-class URLShortenerForm(forms.Form):
-    url = forms.URLField(label='Enter URL', required=True)
-
-
-# **🔹 کوتاه کردن لینک و نمایش آن**
-@method_decorator(login_required, name='dispatch')
-class ShortenURLView(View):
-    def get(self, request):
-        form = URLShortenerForm()
-        return render(request, 'shortener_form.html', {'form': form})
-
-    def post(self, request):
-        form = URLShortenerForm(request.POST)
-        if form.is_valid():
-            url = form.cleaned_data['url']
-            shortened, created = ShortenedURL.objects.get_or_create(original_url=url, user=request.user)
-            return render(request, 'shortener_form.html', {
-                'form': form,
-                'short_url': request.build_absolute_uri(f'/{shortened.short_code}'),
-                'click_count': shortened.click_count
-            })
-        return render(request, 'shortener_form.html', {'form': form})
-
-
-# **🔹 هدایت به لینک اصلی و شمارش کلیک‌ها**
-class RedirectURLView(View):
-    def get(self, request, code):
-        url_entry = get_object_or_404(ShortenedURL, short_code=code)
-        url_entry.click_count += 1
-        url_entry.save()
-        return redirect(url_entry.original_url)
-
-
-# **🔹 داشبورد کاربران - نمایش لینک‌های ساخته شده**
-@method_decorator(login_required, name='dispatch')
-class DashboardView(View):
-    def get(self, request):
-        user_links = ShortenedURL.objects.filter(user=request.user)
-        return render(request, 'dashboard.html', {'links': user_links})
-
-
-# **🔹 تولید QR Code در فرمت SVG**
-class QRCodeSVGView(View):
-    def get(self, request, code):
-        url_entry = get_object_or_404(ShortenedURL, short_code=code)
-        factory = qrcode.image.svg.SvgImage
-        qr = qrcode.make(request.build_absolute_uri(f'/{code}'), image_factory=factory)
-        stream = BytesIO()
-        qr.save(stream)
-        stream.seek(0)
-        return HttpResponse(stream.getvalue(), content_type="image/svg+xml")
-
-# صفحه لاگین
-def login_view(request):
-    if request.method == "POST":
-        username = request.POST["username"]
-        password = request.POST["password"]
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
-            login(request, user)
+    def dispatch(self, request, *args, **kwargs):
+        if not settings.ALLOW_REGISTRATION:
+            raise Http404
+        if request.user.is_authenticated:
             return redirect("dashboard")
-        else:
-            return render(request, "login.html", {"error": "Invalid credentials"})
-    return render(request, "login.html")
+        return super().dispatch(request, *args, **kwargs)
 
-# صفحه داشبورد
-@login_required
-def dashboard(request):
-    links = ShortenedURL.objects.filter(user=request.user)
-    return render(request, "dashboard.html", {"links": links})
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        login(self.request, self.object)
+        messages.success(self.request, f"Welcome, {self.object.username}!")
+        return response
 
-# خروج از حساب
-def logout_view(request):
-    logout(request)
-    return redirect("login")
+
+def healthz(request):
+    """Liveness/readiness probe used by the container healthcheck."""
+    return JsonResponse({"status": "ok"})

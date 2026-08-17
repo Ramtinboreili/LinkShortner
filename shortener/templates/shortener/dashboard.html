@@ -1,0 +1,96 @@
+{% extends "shortener/base.html" %}
+
+{% block title %}Dashboard — {{ SITE_NAME }}{% endblock %}
+
+{% block content %}
+<h1>Your links</h1>
+<p>Everything you have shortened, newest first.</p>
+
+<div class="stats">
+  <div class="stat">
+    <div class="stat-value">{{ total_links }}</div>
+    <div class="stat-label">Links</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">{{ total_clicks }}</div>
+    <div class="stat-label">Total clicks</div>
+  </div>
+</div>
+
+<div class="toolbar">
+  <form method="get" action="{% url 'dashboard' %}" role="search">
+    <input type="search" name="q" value="{{ query }}" placeholder="Search links…" aria-label="Search links">
+    <button class="btn btn-secondary" type="submit">Search</button>
+    {% if query %}<a class="btn btn-ghost" href="{% url 'dashboard' %}">Clear</a>{% endif %}
+  </form>
+  <a class="btn btn-primary" href="{% url 'home' %}">New link</a>
+</div>
+
+{% if links %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Short link</th>
+          <th scope="col">Destination</th>
+          <th scope="col">Clicks</th>
+          <th scope="col">Created</th>
+          <th scope="col"><span class="visually-hidden">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for link in links %}
+          {% with short_url=request.scheme|add:"://"|add:request.get_host|add:link.get_absolute_url %}
+            <tr>
+              <td>
+                <a class="code-cell" href="{{ link.get_absolute_url }}" target="_blank" rel="noopener">/{{ link.short_code }}</a>
+              </td>
+              <td>
+                <a class="dest-cell" href="{{ link.original_url }}" target="_blank" rel="noopener"
+                   title="{{ link.original_url }}">{{ link.original_url }}</a>
+              </td>
+              <td><span class="pill">{{ link.click_count }}</span></td>
+              <td>{{ link.created_at|date:"M j, Y" }}</td>
+              <td>
+                <div class="row-actions">
+                  <button class="btn btn-secondary btn-sm" type="button" data-copy="{{ short_url }}">Copy</button>
+                  <a class="btn btn-secondary btn-sm"
+                     href="{% url 'qrcode_svg' code=link.short_code %}"
+                     data-qr="{% url 'qrcode_svg' code=link.short_code %}"
+                     data-url="{{ short_url }}">QR</a>
+                  <form method="post" action="{% url 'delete_link' pk=link.pk %}" class="inline-form"
+                        data-confirm="Delete /{{ link.short_code }}? This cannot be undone.">
+                    {% csrf_token %}
+                    <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% endwith %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if is_paginated %}
+    <nav class="pagination" aria-label="Pagination">
+      {% if page_obj.has_previous %}
+        <a class="btn btn-secondary btn-sm" href="?{% if query %}q={{ query }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+      {% endif %}
+      <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}
+        <a class="btn btn-secondary btn-sm" href="?{% if query %}q={{ query }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+      {% endif %}
+    </nav>
+  {% endif %}
+{% else %}
+  <div class="card empty">
+    <div class="empty-icon" aria-hidden="true">🔗</div>
+    <h2>{% if query %}No links match “{{ query }}”{% else %}No links yet{% endif %}</h2>
+    <p>{% if query %}Try a different search term.{% else %}Shorten your first URL to see it here.{% endif %}</p>
+    <a class="btn btn-primary" href="{% url 'home' %}">Create a short link</a>
+  </div>
+{% endif %}
+
+{% include "shortener/partials/_qr_dialog.html" %}
+{% endblock %}

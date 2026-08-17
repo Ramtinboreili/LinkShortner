@@ -1,0 +1,67 @@
+{% extends "shortener/base.html" %}
+
+{% block title %}{{ SITE_NAME }} — shorten any link{% endblock %}
+
+{% block content %}
+<section class="shorten-shell">
+  <div class="hero">
+    <span class="eyebrow">Fast · Private · Yours</span>
+    <h1>Shorten any link in one step</h1>
+    <p>Create a tidy short link, share it as a QR code, and watch the clicks add up on your dashboard.</p>
+  </div>
+
+  <div class="card">
+    <form method="post" action="{% url 'home' %}" novalidate>
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <ul class="errorlist">
+          {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+        </ul>
+      {% endif %}
+
+      {% include "shortener/partials/_field.html" with field=form.original_url %}
+
+      <div class="field-row">
+        {% include "shortener/partials/_field.html" with field=form.short_code %}
+        <div class="field">
+          <label aria-hidden="true">&nbsp;</label>
+          <button class="btn btn-primary" type="submit">Shorten link</button>
+        </div>
+      </div>
+    </form>
+
+    {% if short_url %}
+      <div class="result">
+        <img class="result-qr" src="{% url 'qrcode_svg' code=link.short_code %}" alt="QR code for {{ short_url }}">
+        <div>
+          <span class="result-label">Your short link</span>
+          <a class="result-url" href="{{ short_url }}" target="_blank" rel="noopener">{{ short_url }}</a>
+          <div class="result-actions">
+            <button class="btn btn-primary btn-sm" type="button" data-copy="{{ short_url }}">Copy</button>
+            <a class="btn btn-secondary btn-sm"
+               href="{% url 'qrcode_svg' code=link.short_code %}?download=1" download>Download QR</a>
+            <a class="btn btn-secondary btn-sm" href="{% url 'dashboard' %}">Dashboard</a>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if not user.is_authenticated %}
+    <div class="features">
+      <div class="feature">
+        <h3>Custom aliases</h3>
+        <p>Pick your own ending instead of a random code.</p>
+      </div>
+      <div class="feature">
+        <h3>QR codes</h3>
+        <p>Every link comes with a crisp, downloadable SVG QR code.</p>
+      </div>
+      <div class="feature">
+        <h3>Click tracking</h3>
+        <p>See how often each link gets opened, in real time.</p>
+      </div>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}
